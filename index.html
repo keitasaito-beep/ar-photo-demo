@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>AR写真デモ</title>
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #000; }
+    #guide {
+      position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+      z-index: 10; background: rgba(0,0,0,.55); color: #fff;
+      font: 13px/1.6 -apple-system, "Hiragino Sans", sans-serif;
+      padding: 6px 14px; border-radius: 16px; white-space: nowrap;
+      pointer-events: none; transition: opacity .3s;
+    }
+    #guide.hidden { opacity: 0; }
+    #sound-hint {
+      position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
+      z-index: 10; background: rgba(0,0,0,.55); color: #fff;
+      font: 12px/1.6 -apple-system, "Hiragino Sans", sans-serif;
+      padding: 4px 12px; border-radius: 14px; display: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="guide">写真にカメラを向けてください</div>
+  <div id="sound-hint">タップで音声ON</div>
+
+  <a-scene mindar-image="imageTargetSrc: ./targets.mind; filterMinCF: 0.0001; filterBeta: 0.001"
+           color-space="sRGB" embedded
+           renderer="colorManagement: true"
+           vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
+    <a-assets>
+      <video id="ar-video" src="./video.mp4" preload="auto" loop muted playsinline webkit-playsinline crossorigin="anonymous"></video>
+    </a-assets>
+
+    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+    <a-entity id="target" mindar-image-target="targetIndex: 0">
+      <!-- マーカー画像は 900x1200 (3:4)。幅1 = マーカー幅なので高さ = 1200/900 -->
+      <a-video id="video-plane" src="#ar-video" width="1" height="1.3333" position="0 0 0" rotation="0 0 0"></a-video>
+    </a-entity>
+  </a-scene>
+
+  <script>
+    const video = document.querySelector('#ar-video');
+    const target = document.querySelector('#target');
+    const guide = document.querySelector('#guide');
+    const soundHint = document.querySelector('#sound-hint');
+    let found = false;
+    let soundOn = false;
+
+    target.addEventListener('targetFound', () => {
+      found = true;
+      guide.classList.add('hidden');
+      if (!soundOn) soundHint.style.display = 'block';
+      video.play().catch(() => {});
+    });
+
+    target.addEventListener('targetLost', () => {
+      found = false;
+      guide.classList.remove('hidden');
+      video.pause();
+    });
+
+    // 初回タップでミュート解除（iOS の自動再生制約対策）
+    document.body.addEventListener('click', () => {
+      if (!soundOn) {
+        video.muted = false;
+        soundOn = true;
+        soundHint.style.display = 'none';
+        if (found) video.play().catch(() => {});
+      }
+    });
+  </script>
+</body>
+</html>
